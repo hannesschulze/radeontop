@@ -22,9 +22,6 @@
 #define _GNU_SOURCE
 #endif
 
-#include "version.h"
-#include "gettext.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/time.h>
@@ -43,8 +40,9 @@ enum {
 // auth.c
 void authenticate_drm(int fd);
 
-// radeontop.c
-void die(const char *why);
+// utils.c
+void radeontop_die(const char *why);
+const char *radeontop_version();
 
 // detect.c
 void init_pci(const char *path, short *bus, unsigned int *device_id, const unsigned char forcemem);

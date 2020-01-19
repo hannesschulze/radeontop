@@ -16,15 +16,11 @@
 */
 
 #include "radeontop.h"
+#include "gettext.h"
 #include <getopt.h>
 
-void die(const char * const why) {
-	puts(why);
-	exit(1);
-}
-
 static void version() {
-	printf("RadeonTop %s\n", VERSION);
+	printf("RadeonTop %s\n", radeontop_version());
 	exit(1);
 }
 
@@ -43,7 +39,7 @@ static void help(const char * const me, const unsigned int ticks, const unsigned
 		"-h --help		Show this help\n"
 		"-v --version		Show the version\n"),
 		me, dumpinterval, ticks);
-	die("");
+	radeontop_die("");
 }
 
 int main(int argc, char **argv) {
@@ -129,7 +125,7 @@ int main(int argc, char **argv) {
 	// init (regain privileges for bus initialization and ultimately drop them afterwards)
 	seteuid(0);
 	init_pci(path, &bus, &device_id, forcemem);
-	// after init_pci we can assume that bus/device_id exists (otherwise it would die())
+	// after init_pci we can assume that bus/device_id exists (otherwise it would radeontop_die())
 
 	setuid(getuid());
 

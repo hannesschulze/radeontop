@@ -16,6 +16,7 @@
 
 #include "radeontop.h"
 #include <xf86drm.h>
+#include "gettext.h"
 #ifdef ENABLE_XCB
 #include <dlfcn.h>
 

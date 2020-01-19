@@ -16,6 +16,7 @@
 */
 
 #include "radeontop.h"
+#include "gettext.h"
 #include <pciaccess.h>
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -39,7 +40,7 @@ int (*getmclk)(uint32_t *out);
 static int find_pci(short bus, struct pci_device *pci_dev) {
 	int ret = pci_system_init();
 	if (ret)
-		die(_("Failed to init pciaccess"));
+		radeontop_die(_("Failed to init pciaccess"));
 
 	struct pci_device *dev;
 	struct pci_id_match match;
@@ -81,16 +82,16 @@ static void open_pci(struct pci_device *gpu_device) {
 	if (getfamily(gpu_device->device_id) >= BONAIRE)
 		reg = 5;
 
-	if (!gpu_device->regions[reg].size) die(_("Can't get the register area size"));
+	if (!gpu_device->regions[reg].size) radeontop_die(_("Can't get the register area size"));
 
 //	printf("Found area %p, size %lu\n", area, dev->regions[reg].size);
 
 	int mem = open("/dev/mem", O_RDONLY);
-	if (mem < 0) die(_("Cannot access GPU registers, are you root?"));
+	if (mem < 0) radeontop_die(_("Cannot access GPU registers, are you root?"));
 
 	area = mmap(NULL, MMAP_SIZE, PROT_READ, MAP_PRIVATE, mem,
 			gpu_device->regions[reg].base_addr + 0x8000);
-	if (area == MAP_FAILED) die(_("mmap failed"));
+	if (area == MAP_FAILED) radeontop_die(_("mmap failed"));
 
 	getgrbm = getgrbm_pci;
 }
@@ -181,7 +182,7 @@ static int find_drm(short bus, short *device_bus, unsigned int *device_id) {
 	}
 
 	if (!(devs = calloc(count, sizeof(drmDevicePtr))))
-		die(_("Failed to allocate memory for DRM\n"));
+		radeontop_die(_("Failed to allocate memory for DRM\n"));
 
 	if ((count = DRMGETDEVICES(devs, count)) < 0) {
 		drmError(-count, _("Failed to get DRM devices"));
@@ -295,7 +296,7 @@ void init_pci(const char *path, short *bus, unsigned int *device_id, const unsig
 	}
 
 	if (err)
-		die(_("Can't find Radeon cards"));
+		radeontop_die(_("Can't find Radeon cards"));
 
 	bits.vram = (getvram != getuint64_null);
 	bits.gtt = (getgtt != getuint64_null);
