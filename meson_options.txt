@@ -1,0 +1,3 @@
+option('xcb', type: 'boolean', value: true)
+option('nls', type: 'boolean', value: true)
+option('amdgpu', type: 'boolean', value: true)

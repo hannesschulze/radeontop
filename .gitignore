@@ -1,5 +1,1 @@
-*.o
-libradeontop_xcb.so
-radeontop
-version.h
-*.mo
+build/
