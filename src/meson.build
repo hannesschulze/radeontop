@@ -4,9 +4,9 @@ radeontop_files = files(
   'dump.c',
   'family_str.c',
   'radeon.c',
-  'radeontop.c',
   'ticks.c',
   'ui.c',
+  'utils.c',
 )
 
 if (enable_xcb)
@@ -27,10 +27,25 @@ if (enable_amdgpu)
   radeontop_files += 'amdgpu.c'
 endif
 
-executable(
+# Build the library
+libradeontop = static_library(
   'radeontop',
   radeontop_files,
   dependencies: radeontop_deps,
-  include_directories: radeontop_inc,
-  install: true,
+  include_directories: [radeontop_inc, radeontop_public_inc],
 )
+
+libradeontop_dep = declare_dependency(
+  link_with: libradeontop,
+  include_directories: radeontop_public_inc,
+)
+
+if (enable_executable)
+  executable(
+    'radeontop',
+    'radeontop.c',
+    dependencies: libradeontop_dep,
+    include_directories: radeontop_inc,
+    install: true,
+  )
+endif

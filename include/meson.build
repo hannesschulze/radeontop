@@ -8,3 +8,4 @@ version_header = configure_file(
 )
 
 radeontop_inc = include_directories('.')
+radeontop_public_inc = include_directories('./radeontop')

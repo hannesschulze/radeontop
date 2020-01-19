@@ -17,6 +17,7 @@
 #include "radeontop.h"
 #include <radeon_drm.h>
 #include <xf86drm.h>
+#include "gettext.h"
 
 // It's safe to make these queries on older kernels.
 #ifndef RADEON_INFO_VRAM_USAGE

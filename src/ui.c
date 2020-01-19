@@ -18,6 +18,8 @@
 #include <math.h>
 #include <ncurses.h>
 #include <stdarg.h>
+#include "gettext.h"
+#include "version.h"
 
 static void printcenter(const unsigned int y, const unsigned int width,
 				const char * const fmt, ...) {

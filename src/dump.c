@@ -16,6 +16,7 @@
 */
 
 #include "radeontop.h"
+#include "gettext.h"
 
 static unsigned char quit = 0;
 
@@ -60,7 +61,7 @@ void dumpdata(const unsigned int ticks, const char file[], const unsigned int li
 		f = fopen(file, "a");
 
 	if (!f)
-		die(_("Can't open file for writing."));
+		radeontop_die(_("Can't open file for writing."));
 
 	// This does not need to be atomic. A delay here is acceptable.
 	while(!results)

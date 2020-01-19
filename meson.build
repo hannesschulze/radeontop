@@ -3,6 +3,7 @@ project('radeontop', 'c', version: '1.2')
 enable_nls = get_option('nls')
 enable_xcb = get_option('xcb')
 enable_amdgpu = get_option('amdgpu')
+enable_executable = get_option('executable')
 
 cc = meson.get_compiler('c')
 

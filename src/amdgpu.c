@@ -15,6 +15,7 @@
 */
 
 #include "radeontop.h"
+#include "gettext.h"
 #include <xf86drm.h>
 #include <libdrm/amdgpu_drm.h>
 #include <libdrm/amdgpu.h>
