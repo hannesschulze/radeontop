@@ -18,7 +18,7 @@
 
 #define str(a) #a
 
-const char * const family_str[] = {
+const char * const radeontop_family_str[] = {
 	str(UNKNOWN_CHIP),
 	str(R600),
 	str(RV610),

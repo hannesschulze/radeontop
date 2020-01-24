@@ -37,7 +37,7 @@ static void call_authenticate_drm_xcb(drm_magic_t magic) {
 }
 #endif
 
-void authenticate_drm(int fd) {
+void radeontop_authenticate_drm(int fd) {
 	drm_magic_t magic;
 
 	/* Obtain magic for our DRM client. */
