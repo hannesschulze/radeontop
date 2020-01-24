@@ -73,7 +73,7 @@ typedef void (*radeontop_die_func)(const char *why, void *userdata);
 struct radeontop_context_t {
   radeontop_die_func die_func;
   void *die_userdata;
-  radeontop_bits bits;
+  radeontop_bits *bits;
   uint64_t vramsize;
   uint64_t gttsize;
   unsigned int sclk_max; // kilohertz

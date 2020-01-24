@@ -300,8 +300,8 @@ void radeontop_init_pci(radeontop_context   *context,
 		context->die_func(_("Can't find Radeon cards"), context->die_userdata);
 
   pthread_mutex_lock(&context->mutex);
-	context->bits.vram = (context->getvram != getuint64_null);
-	context->bits.gtt = (context->getgtt != getuint64_null);
+	context->bits->vram = (context->getvram != getuint64_null);
+	context->bits->gtt = (context->getgtt != getuint64_null);
   pthread_mutex_unlock(&context->mutex);
 	*bus = device_bus;
 }
@@ -313,6 +313,7 @@ void radeontop_cleanup(radeontop_context *context) {
 	radeontop_cleanup_amdgpu();
 #endif
 
+  free(context->bits);
   free(context);
 }
 
@@ -320,28 +321,28 @@ static void init_bits(radeontop_context *context, int fam) {
   pthread_mutex_lock(&context->mutex);
 
 	// The majority of these is the same from R600 to Southern Islands.
-	context->bits.ee = (1U << 10);
-	context->bits.vgt = (1U << 16) | (1U << 17);
-	context->bits.ta = (1U << 14);
-	context->bits.tc = (1U << 19);
-	context->bits.sx = (1U << 20);
-	context->bits.sh = (1U << 21);
-	context->bits.spi = (1U << 22);
-	context->bits.smx = (1U << 23);
-	context->bits.sc = (1U << 24);
-	context->bits.pa = (1U << 25);
-	context->bits.db = (1U << 26);
-	context->bits.cr = (1U << 27);
-	context->bits.cb = (1U << 30);
-	context->bits.gui = (1U << 31);
+	context->bits->ee = (1U << 10);
+	context->bits->vgt = (1U << 16) | (1U << 17);
+	context->bits->ta = (1U << 14);
+	context->bits->tc = (1U << 19);
+	context->bits->sx = (1U << 20);
+	context->bits->sh = (1U << 21);
+	context->bits->spi = (1U << 22);
+	context->bits->smx = (1U << 23);
+	context->bits->sc = (1U << 24);
+	context->bits->pa = (1U << 25);
+	context->bits->db = (1U << 26);
+	context->bits->cr = (1U << 27);
+	context->bits->cb = (1U << 30);
+	context->bits->gui = (1U << 31);
 
 	// R600 has a different texture bit, and only R600 has the TC, CR, SMX bits
 	if (fam < RV770) {
-		context->bits.ta = (1U << 18);
+		context->bits->ta = (1U << 18);
 	} else {
-		context->bits.tc = 0;
-		context->bits.cr = 0;
-		context->bits.smx = 0;
+		context->bits->tc = 0;
+		context->bits->cr = 0;
+		context->bits->smx = 0;
 	}
 
   pthread_mutex_unlock(&context->mutex);

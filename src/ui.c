@@ -188,7 +188,7 @@ void radeontop_present(radeontop_context *context,
 		printright(start++, hw, _("Texture Addresser %6.2f%%"), ta);
 
 		// This is only present on R600
-		if (context->bits.tc) {
+		if (context->bits->tc) {
 			percentage(start, w, tc);
 			printright(start++, hw, _("Texture Cache %6.2f%%"), tc);
 		}
@@ -208,7 +208,7 @@ void radeontop_present(radeontop_context *context,
 		printright(start++, hw, _("Shader Interpolator %6.2f%%"), spi);
 
 		// only on R600
-		if (context->bits.smx) {
+		if (context->bits->smx) {
 			percentage(start, w, smx);
 			printright(start++, hw, _("Shader Memory Exchange %6.2f%%"), smx);
 		}
@@ -234,17 +234,17 @@ void radeontop_present(radeontop_context *context,
 		printright(start++, hw, _("Color Block %6.2f%%"), cb);
 
 		// Only present on R600
-		if (context->bits.cr) {
+		if (context->bits->cr) {
 			percentage(start, w, cr);
 			printright(start++, hw, _("Clip Rectangle %6.2f%%"), cr);
 		}
 		if (color) attroff(COLOR_PAIR(5));
 
-		if (context->bits.vram || context->bits.gtt) {
+		if (context->bits->vram || context->bits->gtt) {
 			// Enough height?
 			if (h > bigh) start++;
 
-			if (context->bits.vram) {
+			if (context->bits->vram) {
 				if (color) attron(COLOR_PAIR(2));
 				percentage(start, w, vram);
 				printright(start++, hw, _("%.0fM / %.0fM VRAM %6.2f%%"),
@@ -252,7 +252,7 @@ void radeontop_present(radeontop_context *context,
 				if (color) attroff(COLOR_PAIR(2));
 			}
 
-			if (context->bits.gtt) {
+			if (context->bits->gtt) {
 				if (color) attron(COLOR_PAIR(2));
 				percentage(start, w, gtt);
 				printright(start++, hw, _("%.0fM / %.0fM GTT %6.2f%%"),

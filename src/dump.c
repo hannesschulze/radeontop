@@ -120,17 +120,17 @@ void radeontop_dumpdata(radeontop_context *context,
 
     pthread_mutex_lock(&context->mutex);
 
-		if (context->bits.tc)
+		if (context->bits->tc)
 			fprintf(f, "tc %.2f%%, ", tc);
 
 		fprintf(f, "sx %.2f%%, ", sx);
 		fprintf(f, "sh %.2f%%, ", sh);
 		fprintf(f, "spi %.2f%%, ", spi);
 
-		if (context->bits.smx)
+		if (context->bits->smx)
 			fprintf(f, "smx %.2f%%, ", smx);
 
-		if (context->bits.cr)
+		if (context->bits->cr)
 			fprintf(f, "cr %.2f%%, ", cr);
 
 		fprintf(f, "sc %.2f%%, ", sc);
@@ -138,10 +138,10 @@ void radeontop_dumpdata(radeontop_context *context,
 		fprintf(f, "db %.2f%%, ", db);
 		fprintf(f, "cb %.2f%%", cb);
 
-		if (context->bits.vram)
+		if (context->bits->vram)
 			fprintf(f, ", vram %.2f%% %.2fmb", vram, vrammb);
 
-		if (context->bits.gtt)
+		if (context->bits->gtt)
 			fprintf(f, ", gtt %.2f%% %.2fmb", gtt, gttmb);
 
 		if (context->sclk_max != 0 && sclk > 0)

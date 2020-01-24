@@ -140,7 +140,7 @@ int main(int argc, char **argv) {
 	setuid(getuid());
 
 	const int family = radeontop_get_family(context, device_id);
-	//if (!family)
+	if (!family)
     context->die_func(_("Unknown Radeon card. <= R500 won't work, new cards might."), context->die_userdata);
 
 	const char * const cardname = radeontop_family_str[family];
