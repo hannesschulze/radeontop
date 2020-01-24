@@ -52,7 +52,7 @@ static int getmclk_amdgpu(uint32_t *out) {
 #define DRM_ATLEAST_VERSION(maj, min) \
 	(drm_major > maj || (drm_major == maj && drm_minor >= min))
 
-void init_amdgpu(int fd) {
+void radeontop_init_amdgpu(radeontop_context *context, int fd) {
 	uint32_t drm_major, drm_minor, out32;
 	uint64_t out64;
 	int ret;
@@ -61,7 +61,7 @@ void init_amdgpu(int fd) {
 		return;
 
 	if (!(ret = getgrbm_amdgpu(&out32)))
-		getgrbm = getgrbm_amdgpu;
+		context->getgrbm = getgrbm_amdgpu;
 	else
 		drmError(ret, _("Failed to get GPU usage"));
 
@@ -70,16 +70,16 @@ void init_amdgpu(int fd) {
 		struct amdgpu_gpu_info gpu;
 
 		amdgpu_query_gpu_info(amdgpu_dev, &gpu);
-		sclk_max = gpu.max_engine_clk;
-		mclk_max = gpu.max_memory_clk;
+		context->sclk_max = gpu.max_engine_clk;
+		context->mclk_max = gpu.max_memory_clk;
 
 		if (!(ret = getsclk_amdgpu(&out32)))
-			getsclk = getsclk_amdgpu;
+			context->getsclk = getsclk_amdgpu;
 		else
 			drmError(ret, _("Failed to get shader clock"));
 
 		if (!(ret = getmclk_amdgpu(&out32)))
-			getmclk = getmclk_amdgpu;
+			context->getmclk = getmclk_amdgpu;
 		else	// memory clock reporting not available on APUs
 			if (!(gpu.ids_flags & AMDGPU_IDS_FLAGS_FUSION))
 				drmError(ret, _("Failed to get memory clock"));
@@ -97,21 +97,21 @@ void init_amdgpu(int fd) {
 		return;
 	}
 
-	vramsize = vram_gtt.vram_size;
-	gttsize = vram_gtt.gtt_size;
+	context->vramsize = vram_gtt.vram_size;
+	context->gttsize = vram_gtt.gtt_size;
 
 	if (!(ret = getvram_amdgpu(&out64)))
-		getvram = getvram_amdgpu;
+		context->getvram = getvram_amdgpu;
 	else
 		drmError(ret, _("Failed to get VRAM usage"));
 
 	if (!(ret = getgtt_amdgpu(&out64)))
-		getgtt = getgtt_amdgpu;
+		context->getgtt = getgtt_amdgpu;
 	else
 		drmError(ret, _("Failed to get GTT usage"));
 }
 
-void cleanup_amdgpu() {
+void radeontop_cleanup_amdgpu() {
 	if (amdgpu_dev)
 		amdgpu_device_deinitialize(amdgpu_dev);
 }

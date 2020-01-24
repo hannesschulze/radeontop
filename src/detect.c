@@ -22,25 +22,16 @@
 #include <sys/mman.h>
 #include <xf86drm.h>
 #include <errno.h>
+#include <pthread.h>
 
-struct bits_t bits;
-uint64_t vramsize;
-uint64_t gttsize;
-unsigned int sclk_max = 0; // kilohertz
-unsigned int mclk_max = 0; // kilohertz
 const void *area;
 
-// function pointers to the right backend
-int (*getgrbm)(uint32_t *out);
-int (*getvram)(uint64_t *out);
-int (*getgtt)(uint64_t *out);
-int (*getsclk)(uint32_t *out);
-int (*getmclk)(uint32_t *out);
-
-static int find_pci(short bus, struct pci_device *pci_dev) {
+static int find_pci(radeontop_context *context,
+                    short              bus,
+                    struct pci_device *pci_dev) {
 	int ret = pci_system_init();
 	if (ret)
-		radeontop_die(_("Failed to init pciaccess"));
+    context->die_func (_("Failed to init pciaccess"), context->die_userdata);
 
 	struct pci_device *dev;
 	struct pci_id_match match;
@@ -76,31 +67,34 @@ static int getgrbm_pci(uint32_t *out) {
 	return 0;
 }
 
-static void open_pci(struct pci_device *gpu_device) {
+static void open_pci(radeontop_context *context, struct pci_device *gpu_device) {
 	// Warning: gpu_device is a copy of a freed struct. Do not access any pointers!
 	int reg = 2;
-	if (getfamily(gpu_device->device_id) >= BONAIRE)
+	if (radeontop_get_family(context, gpu_device->device_id) >= BONAIRE)
 		reg = 5;
 
-	if (!gpu_device->regions[reg].size) radeontop_die(_("Can't get the register area size"));
+	if (!gpu_device->regions[reg].size)
+    context->die_func(_("Can't get the register area size"), context->die_userdata);
 
 //	printf("Found area %p, size %lu\n", area, dev->regions[reg].size);
 
 	int mem = open("/dev/mem", O_RDONLY);
-	if (mem < 0) radeontop_die(_("Cannot access GPU registers, are you root?"));
+	if (mem < 0)
+    context->die_func(_("Cannot access GPU registers, are you root?"), context->die_userdata);
 
 	area = mmap(NULL, MMAP_SIZE, PROT_READ, MAP_PRIVATE, mem,
 			gpu_device->regions[reg].base_addr + 0x8000);
-	if (area == MAP_FAILED) radeontop_die(_("mmap failed"));
+	if (area == MAP_FAILED)
+    context->die_func(_("mmap failed"), context->die_userdata);
 
-	getgrbm = getgrbm_pci;
+	context->getgrbm = getgrbm_pci;
 }
 
 static void cleanup_pci() {
 	munmap((void *) area, MMAP_SIZE);
 }
 
-static int init_drm(int drm_fd) {
+static int init_drm(radeontop_context *context, int drm_fd) {
 	drmVersionPtr ver = drmGetVersion(drm_fd);
 
 	if (!ver) {
@@ -109,13 +103,13 @@ static int init_drm(int drm_fd) {
 		return -1;
 	}
 
-	authenticate_drm(drm_fd);
+	radeontop_authenticate_drm(drm_fd);
 
 	if (strcmp(ver->name, "radeon") == 0)
-		init_radeon(drm_fd, ver->version_major, ver->version_minor);
+		radeontop_init_radeon(context, drm_fd, ver->version_major, ver->version_minor);
 	else if (strcmp(ver->name, "amdgpu") == 0)
 #ifdef ENABLE_AMDGPU
-		init_amdgpu(drm_fd);
+		radeontop_init_amdgpu(context, drm_fd);
 #else
 		fprintf(stderr, _("amdgpu support is not compiled in (libdrm 2.4.63 required)\n"));
 #endif
@@ -135,7 +129,7 @@ static int init_drm(int drm_fd) {
 	return drm_fd;
 }
 
-static void open_drm_bus(const struct pci_device *dev) {
+static void open_drm_bus(radeontop_context *context, const struct pci_device *dev) {
 	char busid[32];
 	snprintf(busid, sizeof(busid), "pci:%04x:%02x:%02x.%u",
 			 dev->domain, dev->bus, dev->dev, dev->func);
@@ -143,16 +137,16 @@ static void open_drm_bus(const struct pci_device *dev) {
 	int fd = drmOpen(NULL, busid);
 
 	if (fd >= 0)
-		init_drm(fd);
+		init_drm(context, fd);
 	else
 		printf(_("Failed to open DRM node, no VRAM support.\n"));
 }
 
-static int open_drm_path(const char *path) {
+static int open_drm_path(radeontop_context *context, const char *path) {
 	int fd = open(path, O_RDWR);
 
 	if (fd >= 0)
-		fd = init_drm(fd);
+		fd = init_drm(context, fd);
 	else
 		fprintf(stderr, _("Failed to open %s: %s\n"),
 			path, strerror(errno));
@@ -169,7 +163,10 @@ static int open_drm_path(const char *path) {
 #endif
 
 #ifdef DRM_BUS_PCI
-static int find_drm(short bus, short *device_bus, unsigned int *device_id) {
+static int find_drm(radeontop_context *context,
+                    short              bus,
+                    short             *device_bus,
+                    unsigned int      *device_id) {
 	drmDevicePtr *devs;
 	int count, i, j, fd = -1;
 
@@ -182,7 +179,7 @@ static int find_drm(short bus, short *device_bus, unsigned int *device_id) {
 	}
 
 	if (!(devs = calloc(count, sizeof(drmDevicePtr))))
-		radeontop_die(_("Failed to allocate memory for DRM\n"));
+		context->die_func(_("Failed to allocate memory for DRM\n"), context->die_userdata);
 
 	if ((count = DRMGETDEVICES(devs, count)) < 0) {
 		drmError(-count, _("Failed to get DRM devices"));
@@ -199,7 +196,7 @@ static int find_drm(short bus, short *device_bus, unsigned int *device_id) {
 		for (j = DRM_NODE_MAX - 1; j >= 0; j--) {
 			if (!(1 << j & devs[i]->available_nodes))
 				continue;
-			if ((fd = open_drm_path(devs[i]->nodes[j])) < 0)
+			if ((fd = open_drm_path(context, devs[i]->nodes[j])) < 0)
 				continue;
 
 			*device_bus = devs[i]->businfo.pci->bus;
@@ -244,16 +241,20 @@ static void device_info_drm(int fd, short *bus, unsigned int *device_id) {
 static int getuint32_null(uint32_t *out) { UNUSED(out); return -1; }
 static int getuint64_null(uint64_t *out) { UNUSED(out); return -1; }
 
-void init_pci(const char *path, short *bus, unsigned int *device_id, const unsigned char forcemem) {
+void radeontop_init_pci(radeontop_context   *context,
+                        const char          *path,
+                        short               *bus,
+                        unsigned int        *device_id,
+                        const unsigned char  forcemem) {
 	short device_bus = -1;
 	int err = 1;
-	getgrbm = getsclk = getmclk = getuint32_null;
-	getvram = getgtt = getuint64_null;
+	context->getgrbm = context->getsclk = context->getmclk = getuint32_null;
+	context->getvram = context->getgtt = getuint64_null;
 
 	if (path) {
-		int fd = open_drm_path(path);
+		int fd = open_drm_path(context, path);
 
-		if (fd < 0 || getgrbm == getuint32_null)
+		if (fd < 0 || context->getgrbm == getuint32_null)
 			exit(1);
 
 #ifdef HAS_DRMGETDEVICE
@@ -268,27 +269,27 @@ void init_pci(const char *path, short *bus, unsigned int *device_id, const unsig
 	// video card, picking the correct PCI bus if provided.
 #ifdef DRM_BUS_PCI
 	if (!forcemem && err)
-		err = find_drm(*bus, &device_bus, device_id);
+		err = find_drm(context, *bus, &device_bus, device_id);
 #endif
 
 	// This is the fallback method for older libdrm that doesn't
 	// have drmGetDevices, operating systems where drmGetDevices
 	// is not implemented, older radeon kernel driver without GRBM
 	// readings, AMD Catalyst driver or when no driver is loaded
-	if (getgrbm == getuint32_null) {
+	if (context->getgrbm == getuint32_null) {
 		struct pci_device pci_dev;
 		memset(&pci_dev, 0, sizeof(struct pci_device));
-		err = find_pci(*bus, &pci_dev);
+		err = find_pci(context, *bus, &pci_dev);
 
 		if (!err) {
 			// DRM support for VRAM
-			open_drm_bus(&pci_dev);
+			open_drm_bus(context, &pci_dev);
 
 			if (forcemem)
 				printf(_("Forcing the /dev/mem path.\n"));
 
-			if (forcemem || getgrbm == getuint32_null)
-				open_pci(&pci_dev);
+			if (forcemem || context->getgrbm == getuint32_null)
+				open_pci(context, &pci_dev);
 
 			device_bus = pci_dev.bus;
 			*device_id = pci_dev.device_id;
@@ -296,57 +297,72 @@ void init_pci(const char *path, short *bus, unsigned int *device_id, const unsig
 	}
 
 	if (err)
-		radeontop_die(_("Can't find Radeon cards"));
+		context->die_func(_("Can't find Radeon cards"), context->die_userdata);
 
-	bits.vram = (getvram != getuint64_null);
-	bits.gtt = (getgtt != getuint64_null);
+  pthread_mutex_lock(&context->mutex);
+	context->bits->vram = (context->getvram != getuint64_null);
+	context->bits->gtt = (context->getgtt != getuint64_null);
+  pthread_mutex_unlock(&context->mutex);
 	*bus = device_bus;
+  context->is_initialized = 1;
 }
 
-void cleanup() {
-	cleanup_pci();
+void radeontop_cleanup(radeontop_context *context) {
+  if (context->is_initialized) {
+	  cleanup_pci();
 
 #ifdef ENABLE_AMDGPU
-	cleanup_amdgpu();
+	  radeontop_cleanup_amdgpu();
 #endif
+  }
+
+  free(context->bits);
+  free(context);
 }
 
-int getfamily(unsigned int id) {
+static void init_bits(radeontop_context *context, int fam) {
+  pthread_mutex_lock(&context->mutex);
+
+	// The majority of these is the same from R600 to Southern Islands.
+	context->bits->ee = (1U << 10);
+	context->bits->vgt = (1U << 16) | (1U << 17);
+	context->bits->ta = (1U << 14);
+	context->bits->tc = (1U << 19);
+	context->bits->sx = (1U << 20);
+	context->bits->sh = (1U << 21);
+	context->bits->spi = (1U << 22);
+	context->bits->smx = (1U << 23);
+	context->bits->sc = (1U << 24);
+	context->bits->pa = (1U << 25);
+	context->bits->db = (1U << 26);
+	context->bits->cr = (1U << 27);
+	context->bits->cb = (1U << 30);
+	context->bits->gui = (1U << 31);
+
+	// R600 has a different texture bit, and only R600 has the TC, CR, SMX bits
+	if (fam < RV770) {
+		context->bits->ta = (1U << 18);
+	} else {
+		context->bits->tc = 0;
+		context->bits->cr = 0;
+		context->bits->smx = 0;
+	}
+
+  pthread_mutex_unlock(&context->mutex);
+}
+
+int radeontop_get_family(radeontop_context *context, unsigned int id) {
+  int res = 0;
 
 	switch(id) {
-		#define CHIPSET(a,b,c) case a: return c;
+		#define CHIPSET(a,b,c) case a: res = c; break;
 		#include "r600_pci_ids.h"
 		#undef CHIPSET
 	}
 
-	return 0;
-}
+  if (res != 0) {
+    init_bits(context, res);
+  }
 
-void initbits(int fam) {
-
-	// The majority of these is the same from R600 to Southern Islands.
-
-	bits.ee = (1U << 10);
-	bits.vgt = (1U << 16) | (1U << 17);
-	bits.ta = (1U << 14);
-	bits.tc = (1U << 19);
-	bits.sx = (1U << 20);
-	bits.sh = (1U << 21);
-	bits.spi = (1U << 22);
-	bits.smx = (1U << 23);
-	bits.sc = (1U << 24);
-	bits.pa = (1U << 25);
-	bits.db = (1U << 26);
-	bits.cr = (1U << 27);
-	bits.cb = (1U << 30);
-	bits.gui = (1U << 31);
-
-	// R600 has a different texture bit, and only R600 has the TC, CR, SMX bits
-	if (fam < RV770) {
-		bits.ta = (1U << 18);
-	} else {
-		bits.tc = 0;
-		bits.cr = 0;
-		bits.smx = 0;
-	}
+	return res;
 }

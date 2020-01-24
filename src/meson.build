@@ -6,7 +6,7 @@ radeontop_files = files(
   'radeon.c',
   'ticks.c',
   'ui.c',
-  'utils.c',
+  'context.c',
 )
 
 if (enable_xcb)

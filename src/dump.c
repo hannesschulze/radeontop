@@ -17,6 +17,7 @@
 
 #include "radeontop.h"
 #include "gettext.h"
+#include <pthread.h>
 
 static unsigned char quit = 0;
 
@@ -30,8 +31,12 @@ static void sighandler(int sig) {
 	}
 }
 
-void dumpdata(const unsigned int ticks, const char file[], const unsigned int limit,
-		const unsigned char bus, const unsigned int dumpinterval) {
+void radeontop_dumpdata(radeontop_context *context,
+                        const unsigned int ticks,
+                        const char file[],
+                        const unsigned int limit,
+                        const unsigned char bus,
+                        const unsigned int dumpinterval) {
 
 #ifdef ENABLE_NLS
 	// This is a data format, so disable decimal point localization
@@ -61,11 +66,11 @@ void dumpdata(const unsigned int ticks, const char file[], const unsigned int li
 		f = fopen(file, "a");
 
 	if (!f)
-		radeontop_die(_("Can't open file for writing."));
+		context->die_func(_("Can't open file for writing."), context->die_userdata);
 
 	// This does not need to be atomic. A delay here is acceptable.
-	while(!results)
-		usleep(16000);
+	while(!radeontop_context_get_results(context))
+    usleep(16000);
 
 	// Action
 	unsigned int count;
@@ -82,6 +87,7 @@ void dumpdata(const unsigned int ticks, const char file[], const unsigned int li
 
 		// Again, no need to protect these. Worst that happens is a slightly
 		// wrong number.
+    radeontop_bits *results = radeontop_context_get_results(context);
 		float k = 1.0f / ticks / dumpinterval;
 		float ee = 100 * results->ee * k;
 		float vgt = 100 * results->vgt * k;
@@ -97,31 +103,34 @@ void dumpdata(const unsigned int ticks, const char file[], const unsigned int li
 		float db = 100 * results->db * k;
 		float cr = 100 * results->cr * k;
 		float cb = 100 * results->cb * k;
-		float vram = 100.0f * results->vram / vramsize;
+		float vram = 100.0f * results->vram / context->vramsize;
 		float vrammb = results->vram / 1024.0f / 1024.0f;
-		float gtt = 100.0f * results->gtt / gttsize;
+		float gtt = 100.0f * results->gtt / context->gttsize;
 		float gttmb = results->gtt / 1024.0f / 1024.0f;
-		float mclk = 100.0f * (results->mclk * k) / (mclk_max / 1e3f);
-		float sclk = 100.0f * (results->sclk * k) / (sclk_max / 1e3f);
+		float mclk = 100.0f * (results->mclk * k) / (context->mclk_max / 1e3f);
+		float sclk = 100.0f * (results->sclk * k) / (context->sclk_max / 1e3f);
 		float mclk_ghz = results->mclk * k / 1000.0f;
 		float sclk_ghz = results->sclk * k / 1000.0f;
+    pthread_mutex_unlock(&context->mutex);
 
 		fprintf(f, "gpu %.2f%%, ", gui);
 		fprintf(f, "ee %.2f%%, ", ee);
 		fprintf(f, "vgt %.2f%%, ", vgt);
 		fprintf(f, "ta %.2f%%, ", ta);
 
-		if (bits.tc)
+    pthread_mutex_lock(&context->mutex);
+
+		if (context->bits->tc)
 			fprintf(f, "tc %.2f%%, ", tc);
 
 		fprintf(f, "sx %.2f%%, ", sx);
 		fprintf(f, "sh %.2f%%, ", sh);
 		fprintf(f, "spi %.2f%%, ", spi);
 
-		if (bits.smx)
+		if (context->bits->smx)
 			fprintf(f, "smx %.2f%%, ", smx);
 
-		if (bits.cr)
+		if (context->bits->cr)
 			fprintf(f, "cr %.2f%%, ", cr);
 
 		fprintf(f, "sc %.2f%%, ", sc);
@@ -129,15 +138,16 @@ void dumpdata(const unsigned int ticks, const char file[], const unsigned int li
 		fprintf(f, "db %.2f%%, ", db);
 		fprintf(f, "cb %.2f%%", cb);
 
-		if (bits.vram)
+		if (context->bits->vram)
 			fprintf(f, ", vram %.2f%% %.2fmb", vram, vrammb);
 
-		if (bits.gtt)
+		if (context->bits->gtt)
 			fprintf(f, ", gtt %.2f%% %.2fmb", gtt, gttmb);
 
-		if (sclk_max != 0 && sclk > 0)
+		if (context->sclk_max != 0 && sclk > 0)
 			fprintf(f, ", mclk %.2f%% %.3fghz, sclk %.2f%% %.3fghz",
 					mclk, mclk_ghz, sclk, sclk_ghz);
+    pthread_mutex_unlock(&context->mutex);
 
 		fprintf(f, "\n");
 		fflush(f);

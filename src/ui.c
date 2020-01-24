@@ -79,13 +79,17 @@ static void percentage(const unsigned int y, const unsigned int w, const float p
 	attroff(A_REVERSE);
 }
 
-void present(const unsigned int ticks, const char card[], unsigned int color,
-		const unsigned char bus, const unsigned int dumpinterval) {
+void radeontop_present(radeontop_context *context,
+                       const unsigned int ticks,
+                       const char card[],
+                       unsigned int color,
+                       const unsigned char bus,
+                       const unsigned int dumpinterval) {
 
 	printf(_("Collecting data, please wait....\n"));
 
 	// This does not need to be atomic. A delay here is acceptable.
-	while(!results)
+	while(!radeontop_context_get_results(context))
 		usleep(16000);
 
 	initscr();
@@ -127,6 +131,7 @@ void present(const unsigned int ticks, const char card[], unsigned int color,
 
 		// Again, no need to protect these. Worst that happens is a slightly
 		// wrong number.
+    radeontop_bits *results = radeontop_context_get_results(context);
 		float k = 1.0f / ticks / dumpinterval;
 		float ee = 100 * results->ee * k;
 		float vgt = 100 * results->vgt * k;
@@ -142,14 +147,14 @@ void present(const unsigned int ticks, const char card[], unsigned int color,
 		float db = 100 * results->db * k;
 		float cr = 100 * results->cr * k;
 		float cb = 100 * results->cb * k;
-		float vram = 100.0f * results->vram / vramsize;
+		float vram = 100.0f * results->vram / context->vramsize;
 		float vrammb = results->vram / 1024.0f / 1024.0f;
-		float vramsizemb = vramsize / 1024.0f / 1024.0f;
-		float gtt = 100.0f * results->gtt / gttsize;
+		float vramsizemb = context->vramsize / 1024.0f / 1024.0f;
+		float gtt = 100.0f * results->gtt / context->gttsize;
 		float gttmb = results->gtt / 1024.0f / 1024.0f;
-		float gttsizemb = gttsize / 1024.0f / 1024.0f;
-		float mclk = 100.0f * (results->mclk * k) / (mclk_max / 1e3f);
-		float sclk = 100.0f * (results->sclk * k) / (sclk_max / 1e3f);
+		float gttsizemb = context->gttsize / 1024.0f / 1024.0f;
+		float mclk = 100.0f * (results->mclk * k) / (context->mclk_max / 1e3f);
+		float sclk = 100.0f * (results->sclk * k) / (context->sclk_max / 1e3f);
 		float mclk_ghz = results->mclk * k / 1000.0f;
 		float sclk_ghz = results->sclk * k / 1000.0f;
 
@@ -183,7 +188,7 @@ void present(const unsigned int ticks, const char card[], unsigned int color,
 		printright(start++, hw, _("Texture Addresser %6.2f%%"), ta);
 
 		// This is only present on R600
-		if (bits.tc) {
+		if (context->bits->tc) {
 			percentage(start, w, tc);
 			printright(start++, hw, _("Texture Cache %6.2f%%"), tc);
 		}
@@ -203,7 +208,7 @@ void present(const unsigned int ticks, const char card[], unsigned int color,
 		printright(start++, hw, _("Shader Interpolator %6.2f%%"), spi);
 
 		// only on R600
-		if (bits.smx) {
+		if (context->bits->smx) {
 			percentage(start, w, smx);
 			printright(start++, hw, _("Shader Memory Exchange %6.2f%%"), smx);
 		}
@@ -229,17 +234,17 @@ void present(const unsigned int ticks, const char card[], unsigned int color,
 		printright(start++, hw, _("Color Block %6.2f%%"), cb);
 
 		// Only present on R600
-		if (bits.cr) {
+		if (context->bits->cr) {
 			percentage(start, w, cr);
 			printright(start++, hw, _("Clip Rectangle %6.2f%%"), cr);
 		}
 		if (color) attroff(COLOR_PAIR(5));
 
-		if (bits.vram || bits.gtt) {
+		if (context->bits->vram || context->bits->gtt) {
 			// Enough height?
 			if (h > bigh) start++;
 
-			if (bits.vram) {
+			if (context->bits->vram) {
 				if (color) attron(COLOR_PAIR(2));
 				percentage(start, w, vram);
 				printright(start++, hw, _("%.0fM / %.0fM VRAM %6.2f%%"),
@@ -247,7 +252,7 @@ void present(const unsigned int ticks, const char card[], unsigned int color,
 				if (color) attroff(COLOR_PAIR(2));
 			}
 
-			if (bits.gtt) {
+			if (context->bits->gtt) {
 				if (color) attron(COLOR_PAIR(2));
 				percentage(start, w, gtt);
 				printright(start++, hw, _("%.0fM / %.0fM GTT %6.2f%%"),
@@ -256,14 +261,14 @@ void present(const unsigned int ticks, const char card[], unsigned int color,
 			}
 		}
 
-		if (sclk_max != 0 && sclk > 0) {
+		if (context->sclk_max != 0 && sclk > 0) {
 			if (color) attron(COLOR_PAIR(3));
 			percentage(start, w, mclk);
 			printright(start++, hw, _("%.2fG / %.2fG Memory Clock %6.2f%%"),
-					mclk_ghz, mclk_max * 1e-6f, mclk);
+					mclk_ghz, context->mclk_max * 1e-6f, mclk);
 			percentage(start, w, sclk);
 			printright(start++, hw, _("%.2fG / %.2fG Shader Clock %6.2f%%"),
-					sclk_ghz, sclk_max * 1e-6f, sclk);
+					sclk_ghz, context->sclk_max * 1e-6f, sclk);
 			if (color) attroff(COLOR_PAIR(3));
 		}
 
