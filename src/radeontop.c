@@ -19,7 +19,9 @@
 #include "gettext.h"
 #include <getopt.h>
 
-static void die(const char *why) {
+static void die(const char *why, void *data) {
+  const char *die_prefix = data;
+  printf("%s", die_prefix);
   puts(why);
   exit(1);
 }
@@ -44,7 +46,7 @@ static void help(const char * const me, const unsigned int ticks, const unsigned
 		"-h --help		Show this help\n"
 		"-v --version		Show the version\n"),
 		me, dumpinterval, ticks);
-	die("");
+	die("", "");
 }
 
 int main(int argc, char **argv) {
@@ -127,7 +129,8 @@ int main(int argc, char **argv) {
 		}
 	}
 
-  radeontop_context *context = radeontop_context_init (die);
+  char *die_prefix = strdup("DYING: ");
+  radeontop_context *context = radeontop_context_init (die, die_prefix);
 
 	// init (regain privileges for bus initialization and ultimately drop them afterwards)
 	seteuid(0);
@@ -137,8 +140,8 @@ int main(int argc, char **argv) {
 	setuid(getuid());
 
 	const int family = radeontop_get_family(context, device_id);
-	if (!family)
-    context->die_func(_("Unknown Radeon card. <= R500 won't work, new cards might."));
+	//if (!family)
+    context->die_func(_("Unknown Radeon card. <= R500 won't work, new cards might."), context->die_userdata);
 
 	const char * const cardname = radeontop_family_str[family];
 
@@ -151,5 +154,6 @@ int main(int argc, char **argv) {
 		radeontop_present(context, ticks, cardname, color, bus, dumpinterval);
 
 	radeontop_cleanup(context);
+  free(die_prefix);
 	return 0;
 }

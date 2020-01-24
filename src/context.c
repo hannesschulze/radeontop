@@ -18,10 +18,11 @@
 #include "version.h"
 #include <pthread.h>
 
-radeontop_context *radeontop_context_init(radeontop_die_func on_die) {
+radeontop_context *radeontop_context_init(radeontop_die_func on_die, void *die_userdata) {
   radeontop_context *res = malloc(sizeof(radeontop_context));
 
   res->die_func = on_die;
+  res->die_userdata = die_userdata;
   res->sclk_max = 0;
   res->mclk_max = 0;
   res->getgrbm = NULL;

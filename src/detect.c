@@ -31,7 +31,7 @@ static int find_pci(radeontop_context *context,
                     struct pci_device *pci_dev) {
 	int ret = pci_system_init();
 	if (ret)
-    context->die_func (_("Failed to init pciaccess"));
+    context->die_func (_("Failed to init pciaccess"), context->die_userdata);
 
 	struct pci_device *dev;
 	struct pci_id_match match;
@@ -74,18 +74,18 @@ static void open_pci(radeontop_context *context, struct pci_device *gpu_device) 
 		reg = 5;
 
 	if (!gpu_device->regions[reg].size)
-    context->die_func(_("Can't get the register area size"));
+    context->die_func(_("Can't get the register area size"), context->die_userdata);
 
 //	printf("Found area %p, size %lu\n", area, dev->regions[reg].size);
 
 	int mem = open("/dev/mem", O_RDONLY);
 	if (mem < 0)
-    context->die_func(_("Cannot access GPU registers, are you root?"));
+    context->die_func(_("Cannot access GPU registers, are you root?"), context->die_userdata);
 
 	area = mmap(NULL, MMAP_SIZE, PROT_READ, MAP_PRIVATE, mem,
 			gpu_device->regions[reg].base_addr + 0x8000);
 	if (area == MAP_FAILED)
-    context->die_func(_("mmap failed"));
+    context->die_func(_("mmap failed"), context->die_userdata);
 
 	context->getgrbm = getgrbm_pci;
 }
@@ -179,7 +179,7 @@ static int find_drm(radeontop_context *context,
 	}
 
 	if (!(devs = calloc(count, sizeof(drmDevicePtr))))
-		context->die_func(_("Failed to allocate memory for DRM\n"));
+		context->die_func(_("Failed to allocate memory for DRM\n"), context->die_userdata);
 
 	if ((count = DRMGETDEVICES(devs, count)) < 0) {
 		drmError(-count, _("Failed to get DRM devices"));
@@ -297,7 +297,7 @@ void radeontop_init_pci(radeontop_context   *context,
 	}
 
 	if (err)
-		context->die_func(_("Can't find Radeon cards"));
+		context->die_func(_("Can't find Radeon cards"), context->die_userdata);
 
   pthread_mutex_lock(&context->mutex);
 	context->bits.vram = (context->getvram != getuint64_null);

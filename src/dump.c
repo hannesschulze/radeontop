@@ -66,7 +66,7 @@ void radeontop_dumpdata(radeontop_context *context,
 		f = fopen(file, "a");
 
 	if (!f)
-		context->die_func(_("Can't open file for writing."));
+		context->die_func(_("Can't open file for writing."), context->die_userdata);
 
 	// This does not need to be atomic. A delay here is acceptable.
 	while(!radeontop_context_get_results(context))

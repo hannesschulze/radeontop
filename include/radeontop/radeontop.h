@@ -68,10 +68,11 @@ typedef int (*radeontop_getsclk_func)(uint32_t *out);
 typedef int (*radeontop_getmclk_func)(uint32_t *out);
 
 // context.c
-typedef void (*radeontop_die_func)(const char *why);
+typedef void (*radeontop_die_func)(const char *why, void *userdata);
 
 struct radeontop_context_t {
   radeontop_die_func die_func;
+  void *die_userdata;
   radeontop_bits bits;
   uint64_t vramsize;
   uint64_t gttsize;
@@ -91,7 +92,7 @@ struct radeontop_context_t {
 };
 typedef struct radeontop_context_t radeontop_context;
 
-radeontop_context *radeontop_context_init(radeontop_die_func on_die);
+radeontop_context *radeontop_context_init(radeontop_die_func on_die, void *die_userdata);
 radeontop_bits *radeontop_context_get_results(radeontop_context *context);
 const char *radeontop_version();
 
