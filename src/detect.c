@@ -304,14 +304,17 @@ void radeontop_init_pci(radeontop_context   *context,
 	context->bits->gtt = (context->getgtt != getuint64_null);
   pthread_mutex_unlock(&context->mutex);
 	*bus = device_bus;
+  context->is_initialized = 1;
 }
 
 void radeontop_cleanup(radeontop_context *context) {
-	cleanup_pci();
+  if (context->is_initialized) {
+	  cleanup_pci();
 
 #ifdef ENABLE_AMDGPU
-	radeontop_cleanup_amdgpu();
+	  radeontop_cleanup_amdgpu();
 #endif
+  }
 
   free(context->bits);
   free(context);

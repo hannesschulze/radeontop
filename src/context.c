@@ -23,6 +23,7 @@ radeontop_context *radeontop_context_init(radeontop_die_func on_die, void *die_u
 
   res->die_func = on_die;
   res->die_userdata = die_userdata;
+  res->is_initialized = 0;
   res->bits = malloc(sizeof(radeontop_bits));
   res->sclk_max = 0;
   res->mclk_max = 0;

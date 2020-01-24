@@ -73,6 +73,7 @@ typedef void (*radeontop_die_func)(const char *why, void *userdata);
 struct radeontop_context_t {
   radeontop_die_func die_func;
   void *die_userdata;
+  int is_initialized;
   radeontop_bits *bits;
   uint64_t vramsize;
   uint64_t gttsize;
